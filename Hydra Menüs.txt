@@ -1,0 +1,211 @@
+local Services = {
+    Players = game:GetService("Players"),
+    RunService = game:GetService("RunService"),
+    UserInputService = game:GetService("UserInputService"),
+    CoreGui = game:GetService("CoreGui")
+}
+
+local Player = Services.Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Flying, NoclipActive, EspActive, HeliActive = false, false, false, false
+local FlySpeed, WalkSpeedValue, JumpPowerValue = 50, 16, 50
+
+-- [[ ANA EKRAN LOGOSU ]] --
+local TopLeftHolder = Instance.new("ScreenGui", Services.CoreGui)
+local LogoLabel = Instance.new("TextLabel", TopLeftHolder)
+LogoLabel.BackgroundTransparency = 1
+LogoLabel.Size = UDim2.new(0, 300, 0, 50)
+LogoLabel.Position = UDim2.new(0, 20, 0, 20)
+LogoLabel.Text = "🐲 Hydra Menüs"
+LogoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+LogoLabel.Font = Enum.Font.SourceSansBold
+LogoLabel.TextSize = 32
+LogoLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- [[ MENÜ TASARIMI ]] --
+local ScreenGui = Instance.new("ScreenGui", Services.CoreGui)
+local MainFrame = Instance.new("Frame", ScreenGui)
+local ScrollingFrame = Instance.new("ScrollingFrame", MainFrame)
+local CloseButton = Instance.new("TextButton", MainFrame)
+
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.Size = UDim2.new(0, 240, 0, 450)
+MainFrame.Position = UDim2.new(0.5, -120, 0.3, 0)
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+
+ScrollingFrame.Size = UDim2.new(1, -10, 1, -40)
+ScrollingFrame.Position = UDim2.new(0, 5, 0, 35)
+ScrollingFrame.BackgroundTransparency = 1
+ScrollingFrame.ScrollBarThickness = 4
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 2.5, 0)
+
+CloseButton.Size = UDim2.new(0, 25, 0, 25)
+CloseButton.Position = UDim2.new(1, -30, 0, 5)
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.new(1, 0, 0)
+CloseButton.BackgroundTransparency = 1
+CloseButton.MouseButton1Click:Connect(function() ScreenGui:Destroy() TopLeftHolder:Destroy() end)
+
+local currentY = 10
+local function CreateButton(name, color)
+    local btn = Instance.new("TextButton", ScrollingFrame)
+    btn.Size = UDim2.new(0.9, 0, 0, 38)
+    btn.Position = UDim2.new(0.05, 0, 0, currentY)
+    btn.BackgroundColor3 = color or Color3.fromRGB(35, 35, 35)
+    btn.Text = name
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.SourceSansSemibold
+    btn.TextSize = 16
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    currentY = currentY + 45
+    return btn
+end
+
+-- [[ BUTONLAR ]] --
+local HeliBtn = CreateButton("HELİKOPTER: KAPALI", Color3.fromRGB(150, 0, 150))
+local EspBtn = CreateButton("ESP: KAPALI", Color3.fromRGB(100, 0, 0))
+local FlyBtn = CreateButton("UÇUŞ (WASD-CTRL)", Color3.fromRGB(45, 45, 45))
+local NoclipBtn = CreateButton("NOCLIP (DUVAR)", Color3.fromRGB(45, 45, 45))
+local InvisBtn = CreateButton("GÖRÜNMEZLİK", Color3.fromRGB(45, 45, 45))
+local SpeedUp = CreateButton("HIZ +", Color3.fromRGB(0, 100, 0))
+local SpeedDown = CreateButton("HIZ -", Color3.fromRGB(100, 0, 0))
+
+local TargetBox = Instance.new("TextBox", ScrollingFrame)
+TargetBox.Size = UDim2.new(0.9, 0, 0, 35)
+TargetBox.Position = UDim2.new(0.05, 0, 0, currentY)
+TargetBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TargetBox.TextColor3 = Color3.new(1, 1, 1)
+TargetBox.PlaceholderText = "Kullanıcı Adı..."
+currentY = currentY + 40
+
+local TPBtn = CreateButton("IŞINLAN", Color3.fromRGB(150, 80, 0))
+local ResetBtn = CreateButton("SIFIRLA", Color3.fromRGB(80, 0, 0))
+
+-- [[ HELİKOPTER MODU (YENİ) ]] --
+HeliBtn.MouseButton1Click:Connect(function()
+    HeliActive = not HeliActive
+    HeliBtn.Text = HeliActive and "HELİKOPTER: AÇIK" or "HELİKOPTER: KAPALI"
+    HeliBtn.BackgroundColor3 = HeliActive and Color3.fromRGB(255, 0, 255) or Color3.fromRGB(150, 0, 150)
+    
+    if HeliActive then
+        local Root = Player.Character.HumanoidRootPart
+        local TGyro = Instance.new("BodyGyro", Root)
+        local TVel = Instance.new("BodyVelocity", Root)
+        
+        TGyro.MaxTorque = Vector3.new(1, 1, 1) * math.huge
+        TGyro.P = 3000
+        TVel.MaxForce = Vector3.new(1, 1, 1) * math.huge
+        TVel.Velocity = Vector3.new(0, 20, 0) -- Hafifçe havaya kaldırır
+        
+        task.spawn(function()
+            while HeliActive and Root.Parent do
+                TGyro.CFrame = TGyro.CFrame * CFrame.Angles(0, math.rad(50), 0) -- Dönme hızı
+                task.wait()
+            end
+            TGyro:Destroy()
+            TVel:Destroy()
+        end)
+    end
+end)
+
+-- [[ DİĞER FONKSİYONLAR ]] --
+local function Refresh()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        local Hum = Player.Character.Humanoid
+        Hum.WalkSpeed = WalkSpeedValue
+        Hum.JumpPower = JumpPowerValue
+        Hum.UseJumpPower = true
+    end
+end
+
+-- ESP SİSTEMİ --
+local function CreateEsp(p)
+    local Billboard = Instance.new("BillboardGui", p.Character)
+    Billboard.Name = "HydraEsp"
+    Billboard.AlwaysOnTop = true
+    Billboard.Size = UDim2.new(0, 200, 0, 50)
+    Billboard.ExtentsOffset = Vector3.new(0, 3, 0)
+    local Label = Instance.new("TextLabel", Billboard)
+    Label.Size = UDim2.new(1, 0, 1, 0)
+    Label.BackgroundTransparency = 1
+    Label.TextColor3 = Color3.fromRGB(0, 255, 150)
+    Label.TextStrokeTransparency = 0
+    Label.TextSize = 14
+    
+    task.spawn(function()
+        while p.Character and p.Character:FindFirstChild("Humanoid") and EspActive do
+            Label.Text = p.Name .. " [" .. math.floor(p.Character.Humanoid.Health) .. "]"
+            task.wait(0.5)
+        end
+        Billboard:Destroy()
+    end)
+end
+
+EspBtn.MouseButton1Click:Connect(function()
+    EspActive = not EspActive
+    EspBtn.Text = EspActive and "ESP: AÇIK" or "ESP: KAPALI"
+    if EspActive then
+        for _, v in pairs(Services.Players:GetPlayers()) do
+            if v ~= Player and v.Character then CreateEsp(v) end
+        end
+    end
+end)
+
+FlyBtn.MouseButton1Click:Connect(function()
+    Flying = not Flying
+    if Flying then
+        local Root = Player.Character.HumanoidRootPart
+        local BV = Instance.new("BodyVelocity", Root)
+        local BG = Instance.new("BodyGyro", Root)
+        BV.MaxForce = Vector3.new(1,1,1) * math.huge
+        BG.MaxTorque = Vector3.new(1,1,1) * math.huge
+        task.spawn(function()
+            while Flying do
+                local dir = Vector3.new(0,0,0)
+                if Services.UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + Camera.CFrame.LookVector end
+                if Services.UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - Camera.CFrame.LookVector end
+                if Services.UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - Camera.CFrame.RightVector end
+                if Services.UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + Camera.CFrame.RightVector end
+                if Services.UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0,1,0) end
+                if Services.UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0,1,0) end
+                BV.Velocity = dir * FlySpeed
+                BG.CFrame = Camera.CFrame
+                task.wait()
+            end
+            BV:Destroy() BG:Destroy()
+        end)
+    end
+end)
+
+NoclipBtn.MouseButton1Click:Connect(function()
+    NoclipActive = not NoclipActive
+end)
+
+Services.RunService.Stepped:Connect(function()
+    if NoclipActive and Player.Character then
+        for _, v in pairs(Player.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
+        end
+    end
+end)
+
+SpeedUp.MouseButton1Click:Connect(function() WalkSpeedValue = WalkSpeedValue + 15 Refresh() end)
+SpeedDown.MouseButton1Click:Connect(function() WalkSpeedValue = WalkSpeedValue - 15 Refresh() end)
+
+TPBtn.MouseButton1Click:Connect(function()
+    local n = TargetBox.Text:lower()
+    for _, v in pairs(Services.Players:GetPlayers()) do
+        if v.Name:lower():find(n) and v.Character then
+            Player.Character.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame
+        end
+    end
+end)
+
+ResetBtn.MouseButton1Click:Connect(function()
+    WalkSpeedValue, JumpPowerValue, Flying, NoclipActive, EspActive, HeliActive = 16, 50, false, false, false, false
+    Refresh()
+end)
+
+task.spawn(function() while task.wait(0.5) do Refresh() end end)
