@@ -28,7 +28,7 @@ local MainFrame = Instance.new("Frame", ScreenGui)
 local ScrollingFrame = Instance.new("ScrollingFrame", MainFrame)
 local CloseButton = Instance.new("TextButton", MainFrame)
 
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MainFrame.Size = UDim2.new(0, 240, 0, 450)
 MainFrame.Position = UDim2.new(0.5, -120, 0.3, 0)
 MainFrame.Active = true
@@ -64,7 +64,7 @@ local function CreateButton(name, color)
 end
 
 -- [[ BUTONLAR ]] --
-local HeliBtn = CreateButton("HELİKOPTER: KAPALI", Color3.fromRGB(150, 0, 150))
+local HeliBtn = CreateButton("SÜPER HELİ: KAPALI", Color3.fromRGB(120, 0, 120))
 local EspBtn = CreateButton("ESP: KAPALI", Color3.fromRGB(100, 0, 0))
 local FlyBtn = CreateButton("UÇUŞ (WASD-CTRL)", Color3.fromRGB(45, 45, 45))
 local NoclipBtn = CreateButton("NOCLIP (DUVAR)", Color3.fromRGB(45, 45, 45))
@@ -83,29 +83,35 @@ currentY = currentY + 40
 local TPBtn = CreateButton("IŞINLAN", Color3.fromRGB(150, 80, 0))
 local ResetBtn = CreateButton("SIFIRLA", Color3.fromRGB(80, 0, 0))
 
--- [[ HELİKOPTER MODU (YENİ) ]] --
+-- [[ SÜPER HIZLI HELİKOPTER MODU ]] --
 HeliBtn.MouseButton1Click:Connect(function()
     HeliActive = not HeliActive
-    HeliBtn.Text = HeliActive and "HELİKOPTER: AÇIK" or "HELİKOPTER: KAPALI"
-    HeliBtn.BackgroundColor3 = HeliActive and Color3.fromRGB(255, 0, 255) or Color3.fromRGB(150, 0, 150)
+    HeliBtn.Text = HeliActive and "SÜPER HELİ: AÇIK" or "SÜPER HELİ: KAPALI"
+    HeliBtn.BackgroundColor3 = HeliActive and Color3.fromRGB(255, 0, 255) or Color3.fromRGB(120, 0, 120)
     
     if HeliActive then
-        local Root = Player.Character.HumanoidRootPart
+        local Root = Player.Character:WaitForChild("HumanoidRootPart")
         local TGyro = Instance.new("BodyGyro", Root)
         local TVel = Instance.new("BodyVelocity", Root)
         
-        TGyro.MaxTorque = Vector3.new(1, 1, 1) * math.huge
-        TGyro.P = 3000
-        TVel.MaxForce = Vector3.new(1, 1, 1) * math.huge
-        TVel.Velocity = Vector3.new(0, 20, 0) -- Hafifçe havaya kaldırır
+        TGyro.P = 10000 -- Daha güçlü tepki
+        TGyro.MaxTorque = Vector3.new(0, math.huge, 0)
+        TVel.MaxForce = Vector3.new(0, math.huge, 0)
+        TVel.Velocity = Vector3.new(0, 8, 0) -- Sabit düşük yükseklik
         
         task.spawn(function()
+            local startPos = Root.Position.Y
             while HeliActive and Root.Parent do
-                TGyro.CFrame = TGyro.CFrame * CFrame.Angles(0, math.rad(50), 0) -- Dönme hızı
+                -- Yükseklik Kilidi
+                if Root.Position.Y > startPos + 10 then
+                    TVel.Velocity = Vector3.new(0, 0, 0) 
+                end
+                -- EKSTRA HIZLI DÖNÜŞ (math.rad(150) saniyede çok fazla dönüş sağlar)
+                TGyro.CFrame = TGyro.CFrame * CFrame.Angles(0, math.rad(150), 0)
                 task.wait()
             end
-            TGyro:Destroy()
-            TVel:Destroy()
+            if TGyro then TGyro:Destroy() end
+            if TVel then TVel:Destroy() end
         end)
     end
 end)
@@ -122,6 +128,7 @@ end
 
 -- ESP SİSTEMİ --
 local function CreateEsp(p)
+    if not p.Character then return end
     local Billboard = Instance.new("BillboardGui", p.Character)
     Billboard.Name = "HydraEsp"
     Billboard.AlwaysOnTop = true
@@ -131,8 +138,8 @@ local function CreateEsp(p)
     Label.Size = UDim2.new(1, 0, 1, 0)
     Label.BackgroundTransparency = 1
     Label.TextColor3 = Color3.fromRGB(0, 255, 150)
-    Label.TextStrokeTransparency = 0
     Label.TextSize = 14
+    Label.TextStrokeTransparency = 0
     
     task.spawn(function()
         while p.Character and p.Character:FindFirstChild("Humanoid") and EspActive do
@@ -159,8 +166,8 @@ FlyBtn.MouseButton1Click:Connect(function()
         local Root = Player.Character.HumanoidRootPart
         local BV = Instance.new("BodyVelocity", Root)
         local BG = Instance.new("BodyGyro", Root)
-        BV.MaxForce = Vector3.new(1,1,1) * math.huge
-        BG.MaxTorque = Vector3.new(1,1,1) * math.huge
+        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
         task.spawn(function()
             while Flying do
                 local dir = Vector3.new(0,0,0)
@@ -179,10 +186,7 @@ FlyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-NoclipBtn.MouseButton1Click:Connect(function()
-    NoclipActive = not NoclipActive
-end)
-
+NoclipBtn.MouseButton1Click:Connect(function() NoclipActive = not NoclipActive end)
 Services.RunService.Stepped:Connect(function()
     if NoclipActive and Player.Character then
         for _, v in pairs(Player.Character:GetDescendants()) do
@@ -193,15 +197,6 @@ end)
 
 SpeedUp.MouseButton1Click:Connect(function() WalkSpeedValue = WalkSpeedValue + 15 Refresh() end)
 SpeedDown.MouseButton1Click:Connect(function() WalkSpeedValue = WalkSpeedValue - 15 Refresh() end)
-
-TPBtn.MouseButton1Click:Connect(function()
-    local n = TargetBox.Text:lower()
-    for _, v in pairs(Services.Players:GetPlayers()) do
-        if v.Name:lower():find(n) and v.Character then
-            Player.Character.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame
-        end
-    end
-end)
 
 ResetBtn.MouseButton1Click:Connect(function()
     WalkSpeedValue, JumpPowerValue, Flying, NoclipActive, EspActive, HeliActive = 16, 50, false, false, false, false
